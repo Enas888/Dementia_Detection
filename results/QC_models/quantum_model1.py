@@ -1,6 +1,5 @@
 import pennylane as qml
-import numpy as np
-
+import pennylane.numpy as np
 
 # =========================================================
 # DEVICE
@@ -53,6 +52,7 @@ def variational_layer(theta):
 # =========================================================
 
 @qml.qnode(dev, interface="autograd")
+
 def quantum_circuit(x, theta):
     """
     Full VQC model:
@@ -66,7 +66,9 @@ def quantum_circuit(x, theta):
     variational_layer(theta)
 
     # Step 3: Measurement (Z expectation per qubit)
-    return [qml.expval(qml.PauliZ(i)) for i in range(n_qubits)]
+    return qml.math.stack(
+        [qml.expval(qml.PauliZ(i)) for i in range(n_qubits)]
+)
 
 
 # =========================================================
@@ -86,7 +88,8 @@ class VQC:
         # [RY, RZ, CRX]
         self.theta = np.random.uniform(
             0, 2 * np.pi,
-            (n_qubits, 3)
+            (n_qubits, 3),
+            requires_grad=True
         )
 
     def forward(self, x):
@@ -105,7 +108,7 @@ class VQC:
 
             z_exp = self.forward(x)
 
-            score = np.mean(z_exp)
+            score = float(np.mean(z_exp))
 
             outputs.append(score)
 
