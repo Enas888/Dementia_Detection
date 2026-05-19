@@ -3,5 +3,7 @@ pandas
 matplotlib
 seaborn
 scikit-learn
+xgboost
 openpyxl
 joblib
+pennylane
