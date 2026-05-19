@@ -2,6 +2,8 @@ import os
 import time
 import json
 import sys
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import numpy as np
 import pennylane as qml
@@ -46,6 +48,12 @@ SPLIT_DIR = os.path.join(BASE_DIR, "data", "splits")
 
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
+CM_DIR = os.path.join(
+    RESULTS_DIR,
+    "Quantum_confusion_matrix"
+)
+
+os.makedirs(CM_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
@@ -340,6 +348,43 @@ def run_experiment(
         test_pred
     )
 
+
+    # =====================================================
+    # SAVE CONFUSION MATRIX
+    # =====================================================
+
+    plt.figure(figsize=(6, 5))
+
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        cbar=False,
+        xticklabels=["Demented", "Nondemented", "Converted"],
+        yticklabels=["Demented", "Nondemented", "Converted"]
+    )
+
+    plt.title(f"{model_name} Confusion Matrix")
+
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+
+    cm_path = os.path.join(
+        CM_DIR,
+        f"{model_name}_confusion_matrix.png"
+    )
+
+    plt.savefig(
+        cm_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(f"✓ Confusion matrix saved -> {cm_path}")
+
     # =====================================================
     # AUC
     # =====================================================
@@ -418,7 +463,7 @@ if os.path.exists(out_path):
 
 else:
     quantum_results = {}
-    
+
 # =========================================================
 # VQC1
 # =========================================================
