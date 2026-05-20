@@ -12,37 +12,64 @@ dev = qml.device(
     wires=n_qubits
 )
 
+# =========================================================
+# ARCHITECTURE CONSTANTS
+#
+# VQC5 — 3-layer CRX chain with data re-uploading
+#
+# Theta layout per layer:
+#   theta[layer, qubit, 0] → RY angle
+#   theta[layer, qubit, 1] → RZ angle
+#   theta[layer, qubit, 2] → CRX angle (qubit i → i+1)
+#                            (unused for last qubit, kept for uniform shape)
+#
+# theta shape: (N_LAYERS, n_qubits, 3)
+# Total params: 3 × 10 × 3 = 90
+# =========================================================
+
+N_LAYERS = 3
+
 
 # =========================================================
 # ANGLE ENCODING
 # =========================================================
 
 def angle_embedding(x):
+    """
+    Angle encoding: maps each feature x_i to RY(x_i) on qubit i.
+    Features must be in [-pi, pi] — handled by the training script.
+    """
     qml.AngleEmbedding(
         features=x,
         wires=range(n_qubits),
         rotation="Y"
     )
-    
+
+
 # =========================================================
 # VARIATIONAL LAYER
 # =========================================================
 
-def variational_layer(theta):
+def variational_layer(theta_layer):
     """
-    One trainable layer:
-    - RY, RZ rotations
-    - CRX entanglement chain
-    """
+    One trainable block:
+      - RY + RZ on every qubit  (single-qubit rotations)
+      - CRX chain i → i+1       (trainable entanglement)
 
-    # Single-qubit trainable rotations
+    Args:
+        theta_layer: shape (n_qubits, 3)
+            theta_layer[i, 0] → RY on qubit i
+            theta_layer[i, 1] → RZ on qubit i
+            theta_layer[i, 2] → CRX control=i, target=i+1
+    """
+    # Single-qubit rotations
     for i in range(n_qubits):
-        qml.RY(theta[i][0], wires=i)
-        qml.RZ(theta[i][1], wires=i)
+        qml.RY(theta_layer[i][0], wires=i)
+        qml.RZ(theta_layer[i][1], wires=i)
 
-    # Entanglement: CRX chain
+    # CRX entanglement chain
     for i in range(n_qubits - 1):
-        qml.CRX(theta[i][2], wires=[i, i + 1])
+        qml.CRX(theta_layer[i][2], wires=[i, i + 1])
 
 
 # =========================================================
@@ -50,25 +77,31 @@ def variational_layer(theta):
 # =========================================================
 
 @qml.qnode(dev, interface="autograd")
-
 def quantum_circuit(x, theta):
     """
-    Full VQC model:
-    Encoding → Variational layer → Measurement
+    Full VQC5 circuit:
+      1. Angle encode input x
+      2. N_LAYERS variational blocks, each preceded by re-encoding
+         (data re-uploading for richer expressibility)
+      3. Measure PauliZ on qubits 0, 1, 2 → 3 logits for 3 classes
+
+    Args:
+        x:     shape (n_qubits,)           — one sample
+        theta: shape (N_LAYERS, n_qubits, 3) — all parameters
+
+    Returns:
+        stack of 3 expectation values in [-1, 1]
     """
+    for layer in range(N_LAYERS):
+        angle_embedding(x)          # re-upload data at every layer
+        variational_layer(theta[layer])
 
-    # Step 1: Encoding
-    angle_embedding(x)
-
-    # Step 2: Variational block (1 layer)
-    variational_layer(theta)
-
-    # Step 3: Measurement (Z expectation per qubit)
     return qml.math.stack([
         qml.expval(qml.PauliZ(0)),
         qml.expval(qml.PauliZ(1)),
         qml.expval(qml.PauliZ(2))
     ])
+
 
 # =========================================================
 # MODEL CLASS
@@ -76,18 +109,23 @@ def quantum_circuit(x, theta):
 
 class VQC:
     """
-    Variational Quantum Classifier wrapper
+    Variational Quantum Classifier — VQC5
+
+    Architecture: 3-layer CRX chain with data re-uploading
+    Parameters:   theta shape (N_LAYERS, n_qubits, 3) = (3, 10, 3) = 90 total
     """
 
-    def __init__(self, n_qubits=10):
+    def __init__(self, n_qubits=10, n_layers=N_LAYERS, seed=42):
 
         self.n_qubits = n_qubits
+        self.n_layers = n_layers
 
-        # theta shape: (n_qubits, 3)
-        # [RY, RZ, CRX]
+        np.random.seed(seed)
+
+        # theta shape: (n_layers, n_qubits, 3) → [RY, RZ, CRX]
         self.theta = np.random.uniform(
             0, 2 * np.pi,
-            (n_qubits, 3),
+            (n_layers, n_qubits, 3),
             requires_grad=True
         )
 
@@ -96,22 +134,31 @@ class VQC:
 
     def predict(self, X):
         """
-        Simple classifier:
-        - Aggregate Z expectations
-        - Threshold for class decision (can extend to softmax later)
-        """ 
-        
-        outputs = []
+        Predict class labels for a batch of samples.
+        Maps 3 PauliZ expectations to a class index via argmax.
+        """
+        predictions = []
 
         for x in X:
-
             z_exp = self.forward(x)
+            # argmax over the 3 qubit expectations → class {0, 1, 2}
+            pred_class = int(np.argmax(z_exp))
+            predictions.append(pred_class)
 
-            score = float(np.mean(z_exp))
+        return np.array(predictions)
 
-            outputs.append(score)
+    def predict_proba(self, X):
+        """
+        Returns raw Z-expectation scores (3 values per sample).
+        Can be passed to softmax for probability estimates.
+        """
+        scores = []
 
-        return np.array(outputs)
+        for x in X:
+            z_exp = self.forward(x)
+            scores.append(z_exp)
+
+        return np.array(scores)
 
     def get_params(self):
         return self.theta
@@ -119,3 +166,5 @@ class VQC:
     def set_params(self, theta):
         self.theta = theta
 
+    def param_count(self):
+        return self.n_layers * self.n_qubits * 3

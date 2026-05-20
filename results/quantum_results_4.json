@@ -1,0 +1,11 @@
+{
+    "VQC4": {
+        "Accuracy": 0.3898,
+        "F1 (weighted)": 0.4406,
+        "AUC-ROC (OvR)": 0.5891,
+        "CV Acc (mean)": 0.4808,
+        "CV Acc (std)": 0.0264,
+        "Train Time (s)": 6510.509,
+        "Best Loss": 0.951288
+    }
+}
