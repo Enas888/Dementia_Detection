@@ -22,10 +22,11 @@ Dementia_Detection/
 │
 ├── QC_models/
 │   ├── __init__.py
-│   ├── quantum_model1.py           # VQC1 — ZZ encoding + CNOT chain
-│   ├── quantum_model2.py           # VQC2 — ZZ encoding + CRX linear chain
-│   ├── quantum_model3.py           # VQC3 — ZZ encoding + CRX ring
-│   └── quantum_model4.py           # VQC4 — ZZ encoding + CRX all-to-all
+│   ├── quantum_model1.py           # VQC1 — Angle encoding + CNOT chain
+│   ├── quantum_model2.py           # VQC2 — Angle encoding + CRX linear chain
+│   ├── quantum_model3.py           # VQC3 — Angle encoding + CRX ring
+│   ├── quantum_model4.py           # VQC4 — Angle encoding + CRX all-to-all
+│   └── quantum_model5.py           # VQC5 — Tuned VQC4 (hyperparameter optimized)
 │
 ├── results/
 │   ├── metrics/
@@ -101,19 +102,21 @@ Metrics saved to `results/metrics/model_results.xlsx`.
 ### 4 · Quantum Models (`src/train_quantum.py`)
 
 All models share:
-- **Encoding:** ZZ Feature Map (Hadamard → RZ → CNOT–RZ–CNOT entanglement)
-- **Variational layer:** RY + RZ rotations per qubit, then entanglement
-- **Measurement:** PauliZ expectation on all qubits
+- **Encoding:** Angle Embedding — each feature xᵢ mapped to RY(xᵢ) on qubit i (features scaled to [-π, π])
+- **Variational layer:** RY + RZ rotations per qubit, then entanglement block
+- **Data re-uploading:** Angle embedding is repeated before each variational layer for richer expressibility
+- **Measurement:** PauliZ expectation on qubits 0, 1, 2 → 3 logits for 3-class softmax
 - **Optimizer:** PennyLane AdamOptimizer (lr = 0.01)
-- **Loss:** MSE on continuous output vs integer class label
+- **Loss:** Cross-entropy
 - **Early stopping:** patience = 10 epochs
 
-| Model | Entanglement | Test Accuracy |
-|---|---|---|
-| VQC1 | CNOT linear chain | 0.3729 |
-| **VQC2** | **CRX linear chain** | **0.5593** |
-| VQC3 | CRX ring | — |
-| VQC4 | CRX all-to-all (45 pairs) | — |
+| Model | Entanglement | CV Acc | Test Accuracy |
+|---|---|---|---|
+| VQC1 | CNOT linear chain | 0.4015 ± 0.074 | 0.2034 |
+| VQC2 | CRX linear chain | 0.4711 ± 0.063 | 0.3390 |
+| VQC3 | CRX ring | 0.4490 ± 0.040 | 0.5254 |
+| VQC4 | CRX all-to-all (45 pairs) | 0.4808 ± 0.026 | — |
+| **VQC5** | **CRX all-to-all (tuned)** | — | — |
 
 Results saved to `results/quantum_results.json`.
 
@@ -121,29 +124,37 @@ Results saved to `results/quantum_results.json`.
 
 ## 🔬 Quantum Model Architectures
 
+All models use **Angle Embedding** as the encoding strategy: each of the 10 input features is encoded as a RY rotation angle on its corresponding qubit. Features are pre-scaled to [-π, π] during preprocessing. In multi-layer circuits, the encoding is re-applied before each variational block (data re-uploading).
+
 ### VQC1 — CNOT Linear Chain
 ```
-H⊗10 → RZ(xᵢ) → ZZ-encode → RY(θ) RZ(θ) → CNOT(i→i+1) → ⟨Z⟩
+AngleEmbed(x) → RY(θ) RZ(θ) → CNOT(i→i+1) → ⟨Z⟩
 ```
-Entanglement via plain CNOT gates (no trainable entangling parameters).
+Entanglement via plain CNOT gates — no trainable entangling parameters.
 
-### VQC2 — CRX Linear Chain *(best quantum result)*
+### VQC2 — CRX Linear Chain
 ```
-H⊗10 → RZ(xᵢ) → ZZ-encode → RY(θ) RZ(θ) → CRX(θ, i→i+1) → ⟨Z⟩
+AngleEmbed(x) → RY(θ) RZ(θ) → CRX(θ, i→i+1) → ⟨Z⟩
 ```
-Replaces CNOT with trainable CRX, giving the entangling layer its own learnable angles.
+Replaces CNOT with trainable CRX, giving the entangling layer its own learnable angles along a linear topology.
 
 ### VQC3 — CRX Ring Connectivity
 ```
-H⊗10 → RZ(xᵢ) → ZZ-encode → RY(θ) RZ(θ) → CRX chain + CRX(9→0) → ⟨Z⟩
+AngleEmbed(x) → RY(θ) RZ(θ) → CRX chain + CRX(9→0) → ⟨Z⟩
 ```
-Closes the linear chain into a ring, adding one extra long-range connection.
+Closes the linear chain into a ring, adding one long-range connection between the last and first qubit.
 
 ### VQC4 — CRX All-to-All Connectivity
 ```
-H⊗10 → RZ(xᵢ) → ZZ-encode → RY(θ) RZ(θ) → CRX(i,j) ∀ i<j → ⟨Z⟩
+AngleEmbed(x) → RY(θ) RZ(θ) → CRX(i,j) ∀ i<j → ⟨Z⟩
 ```
-Full connectivity: 45 entangling pairs for 10 qubits. Highest parameter count.
+Full connectivity: 45 trainable CRX pairs for 10 qubits. 3 layers with data re-uploading. Total parameters: 195.
+
+### VQC5 — Tuned VQC4 *(in progress)*
+```
+AngleEmbed(x) → RY(θ) RZ(θ) → CRX(i,j) ∀ i<j → ⟨Z⟩  [optimized hyperparameters]
+```
+VQC5 shares the all-to-all CRX architecture of VQC4 — which achieved the highest cross-validation accuracy (0.4808 ± 0.026) among all quantum models — and extends it with systematic hyperparameter tuning (learning rate, number of layers, optimizer schedule, and batch strategy). VQC5 represents the best-effort quantum configuration in this pipeline.
 
 ---
 
@@ -204,9 +215,10 @@ pip install -r requirements.txt
 
 ## 📌 Notes
 
-- Quantum training is slow on CPU — VQC4 (all-to-all) is the most expensive due to 45 CRX gates. Consider running on GPU with `pennylane-lightning` or reducing `epochs`.
+- Quantum training is slow on CPU — VQC4/VQC5 (all-to-all) are the most expensive due to 45 CRX pairs per layer. Consider running with `pennylane-lightning` on GPU or reducing the number of layers.
 - The `Converted` class (14 subjects) is severely underrepresented, which limits quantum model performance on that class.
 - Classical models significantly outperform quantum models at this scale, consistent with NISQ-era expectations on tabular data.
+- Angle Embedding is used across all VQC variants, with features scaled to [-π, π] to match the rotation angle range of RY gates.
 
 ---
 
