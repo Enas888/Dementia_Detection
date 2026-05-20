@@ -1,0 +1,16 @@
+VQC3 ANALYSIS
+==================================================
+
+Qubits              : 10
+Trainable Params    : 30
+Circuit Depth       : 31
+Total Gates         : 31
+Measurements        : 3
+Entangling Gates    : 11
+Connectivity        : Ring Connectivity
+
+Gate Breakdown:
+AngleEmbedding : 1
+RY         : 10
+RZ         : 10
+CRX        : 10

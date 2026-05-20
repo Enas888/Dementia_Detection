@@ -1,19 +1,10 @@
 {
-    "VQC1": {
-        "Accuracy": 0.5593,
-        "F1 (weighted)": 0.5304,
-        "AUC-ROC (OvR)": 0.6009,
-        "CV Acc (mean)": 0.4142,
-        "CV Acc (std)": 0.0639,
-        "Train Time (s)": 436.35
-    },
-
-    "VQC2": {
+    "VQC4": {
         "Accuracy": 0.3729,
-        "F1 (weighted)": 0.2051,
-        "AUC-ROC (OvR)": 0.4957,
-        "CV Acc (mean)": 0.3949,
-        "CV Acc (std)": 0.0039,
-        "Train Time (s)": 343.91
+        "F1 (weighted)": 0.3805,
+        "AUC-ROC (OvR)": 0.5064,
+        "CV Acc (mean)": 0.4079,
+        "CV Acc (std)": 0.0845,
+        "Train Time (s)": 4512.586
     }
 }

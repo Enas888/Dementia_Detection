@@ -1,0 +1,16 @@
+VQC1 ANALYSIS
+==================================================
+
+Qubits              : 10
+Trainable Params    : 30
+Circuit Depth       : 30
+Total Gates         : 30
+Measurements        : 3
+Entangling Gates    : 10
+Connectivity        : Linear CRX Chain
+
+Gate Breakdown:
+AngleEmbedding : 1
+RY         : 10
+RZ         : 10
+CNOT       : 9

@@ -1,3 +1,5 @@
+
+
 import pennylane as qml
 import pennylane.numpy as np
 
@@ -18,13 +20,11 @@ dev = qml.device(
 # =========================================================
 
 def angle_embedding(x):
-    """
-    Encode classical features into quantum states using RY rotations.
-    x shape: (10,)
-    """
-    for i in range(n_qubits):
-        qml.RY(x[i], wires=i)
-
+    qml.AngleEmbedding(
+        features=x,
+        wires=range(n_qubits),
+        rotation="Y"
+    )
 
 # =========================================================
 # VARIATIONAL LAYER
@@ -65,11 +65,11 @@ def quantum_circuit(x, theta):
     variational_layer(theta)
 
     # Step 3: Measurement (Z expectation per qubit)
-    return qml.math.stack(
-        [qml.expval(qml.PauliZ(i)) for i in range(n_qubits)]
-)
-
-
+    return qml.math.stack([
+        qml.expval(qml.PauliZ(0)),
+        qml.expval(qml.PauliZ(1)),
+        qml.expval(qml.PauliZ(2))
+    ])
 # =========================================================
 # MODEL CLASS
 # =========================================================

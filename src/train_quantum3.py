@@ -475,20 +475,9 @@ else:
 #     y_test=y_test
 # )
 
-# quantum_results["VQC3"] = run_experiment(
-#     ModelClass=VQC3,
-#     model_name="VQC3",
-#     X_train=X_train,
-#     y_train=y_train,
-#     X_val=X_val,
-#     y_val=y_val,
-#     X_test=X_test,
-#     y_test=y_test
-# )
-
-quantum_results["VQC4"] = run_experiment(
-    ModelClass=VQC4,
-    model_name="VQC4",
+quantum_results["VQC3"] = run_experiment(
+    ModelClass=VQC3,
+    model_name="VQC3",
     X_train=X_train,
     y_train=y_train,
     X_val=X_val,
@@ -496,6 +485,17 @@ quantum_results["VQC4"] = run_experiment(
     X_test=X_test,
     y_test=y_test
 )
+
+# quantum_results["VQC4"] = run_experiment(
+#     ModelClass=VQC4,
+#     model_name="VQC4",
+#     X_train=X_train,
+#     y_train=y_train,
+#     X_val=X_val,
+#     y_val=y_val,
+#     X_test=X_test,
+#     y_test=y_test
+# )
 
 # =========================================================
 # SAVE RESULTS
