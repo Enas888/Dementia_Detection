@@ -7,3 +7,5 @@ xgboost
 openpyxl
 joblib
 pennylane
+cffi
+## pip -vvv install --upgrade --force-reinstall cffi

@@ -41,7 +41,7 @@ sys.path.append(ROOT_DIR)
 from QC_models.quantum_model1 import VQC as VQC1
 from QC_models.quantum_model2 import VQC as VQC2
 from QC_models.quantum_model3 import VQC as VQC3
-from QC_models.quantum_model4 import VQC as VQC4
+from QC_models.quantum_model5_real_hardware import VQC as VQC4
 from QC_models.quantum_model5 import VQC as VQC5  
 
 # tunned VQC2 with 3 layers and CRX entanglement — best so far
@@ -61,7 +61,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(CM_DIR,      exist_ok=True)
 os.makedirs(CURVE_DIR,   exist_ok=True)
 
-RESULTS_JSON = os.path.join(RESULTS_DIR, "quantum_results.json")
+RESULTS_JSON = os.path.join(RESULTS_DIR, "quantum_results_hardware.json")
 
 # =========================================================
 # LOAD DATA
@@ -413,9 +413,9 @@ else:
 #     epochs=150, cv_epochs=50, batch_size=16, learning_rate=0.01
 # )
 
-quantum_results["VQC2"] = run_experiment(
-    ModelClass=VQC2,
-    model_name="VQC2",
+quantum_results["VQC4"] = run_experiment(
+    ModelClass=VQC4,
+    model_name="VQC4",
     X_train=X_train, y_train=y_train,
     X_val=X_val,     y_val=y_val,
     X_test=X_test,   y_test=y_test,
